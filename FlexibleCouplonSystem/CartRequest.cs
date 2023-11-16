@@ -21,7 +21,12 @@ namespace FlexibleCouplonSystem
         [Column(TypeName = "decimal(18,4)")]
         public decimal DiscountAmount { get; set; }
     }
-
+    public class ItemDto
+    {
+        public string Name { get; set; }
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal Price { get; set; }
+    }
 }
 
 

@@ -46,6 +46,30 @@ public class CartController : ControllerBase
             return BadRequest(new { success = false, message = "Coupon is not valid" });
         }
     }
+    [HttpPost("create_item")]
+    public IActionResult CreateItem([FromBody] ItemDto item)
+    {
+        try
+        {
+            if (item == null)
+            {
+                return BadRequest(new { success = false, message = "Coupon not be null" });
+            }
+            var newItem = new Item
+            {
+                Name = item.Name,
+                Price = item.Price,
+            };
+            var createCoupon = _context.Items.Add(newItem);
+            _context.SaveChanges();
+            return Ok(new { success = true, message = "Coupon created" });
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
     [HttpGet("check_coupon")]
     public IActionResult getCouponByCode(string code)
     {
