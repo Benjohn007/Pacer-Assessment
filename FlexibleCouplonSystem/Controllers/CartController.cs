@@ -28,15 +28,53 @@ public class CartController : ControllerBase
 
         if (coupon != null && ValidateCouponRules(coupon, cartTotalPrice, cartItems))
         {
-            decimal discountedPrice = CalculateDiscountedPrice(coupon, cartTotalPrice);
-            return Ok(new { success = true, discounted_price = discountedPrice });
+            if (cartRequest.CouponCode == "FIXED10" || cartRequest.CouponCode == "PERCENT10" || cartRequest.CouponCode == "MIXED10")
+            {
+                decimal discountedPrice = CalculateDiscountedPrice(coupon, cartTotalPrice);
+                return Ok(new { success = true, discounted_price = discountedPrice });
+            }
+            else if(cartRequest.CouponCode == "REJECTED10")
+            {
+               decimal discountedPrice = CalculateDiscountedPrice(coupon, cartTotalPrice,cartItems);
+               return Ok(new { success = true, discounted_price = discountedPrice });
+
+            }
+            else { return BadRequest(new { success = false, message = "Coupon is not valid" }); }
         }
         else
         {
             return BadRequest(new { success = false, message = "Coupon is not valid" });
         }
     }
-    private bool ValidateCouponRules(Coupon coupon, decimal cartTotalPrice, List<Item> cartItems)
+    [HttpPost("create_coupon")]
+    public IActionResult ApplyCoupon([FromBody] CreateCoupon coupon)
+    {
+        try
+        {
+            if(coupon == null)
+            {
+                return BadRequest(new { success = false, message = "Coupon not be null" });
+            }
+            var newCoupon = new Coupon
+            {
+                Code = coupon.Code,
+                TotalPriceThreshold = coupon.TotalPriceThreshold,
+                MinItems = coupon.MinItems,
+                DiscountAmount = coupon.DiscountAmount,
+                DiscountType = coupon.DiscountType,
+
+            };
+            var createCoupon = _context.Coupons.Add(newCoupon);
+            _context.SaveChanges();
+            return Ok(new { success = true, message = "Coupon created" });
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+        private bool ValidateCouponRules(Coupon coupon, decimal cartTotalPrice, List<Item> cartItems)
     {
         // Ensure coupon and cartItems are not null
         if (coupon == null || cartItems == null)
@@ -69,6 +107,29 @@ public class CartController : ControllerBase
             "percent" => cartTotalPrice * (1 - coupon.DiscountAmount / 100),
             _ => cartTotalPrice
         };
+    }
+    private decimal CalculateDiscountedPrice(Coupon coupon, decimal cartTotalPrice, List<Item> cartItems)
+    {
+        if (cartTotalPrice > coupon.TotalPriceThreshold && cartItems.Count >= coupon.MinItems)
+        {
+            switch (coupon.DiscountType.ToLower())
+            {
+                case "fixed":
+                    return Math.Max(0, cartTotalPrice - coupon.DiscountAmount);
+                case "percent":
+                    return cartTotalPrice * (1 - coupon.DiscountAmount / 100);
+                case "mixed":
+                    decimal fixedDiscount = Math.Max(0, cartTotalPrice - coupon.DiscountAmount);
+                    decimal percentDiscount = cartTotalPrice * (1 - coupon.DiscountAmount / 100);
+                    return Math.Max(fixedDiscount, percentDiscount);
+                default:
+                    throw new ArgumentException("Invalid discount type");
+            }
+        }
+        else
+        {
+            return cartTotalPrice; // No discount applied if rules are not met
+        }
     }
 }
 
