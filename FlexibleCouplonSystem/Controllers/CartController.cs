@@ -28,12 +28,12 @@ public class CartController : ControllerBase
 
         if (coupon != null && ValidateCouponRules(coupon, cartTotalPrice, cartItems))
         {
-            if (cartRequest.CouponCode == "FIXED10" || cartRequest.CouponCode == "PERCENT10" || cartRequest.CouponCode == "MIXED10")
+            if (cartRequest.CouponCode != null && cartRequest.CartItems.Count !< 3)
             {
                 decimal discountedPrice = CalculateDiscountedPrice(coupon, cartTotalPrice);
                 return Ok(new { success = true, discounted_price = discountedPrice });
             }
-            else if(cartRequest.CouponCode == "REJECTED10")
+            else if(cartRequest.CouponCode != null && cartRequest.CartItems.Count >= 4)
             {
                decimal discountedPrice = CalculateDiscountedPrice(coupon, cartTotalPrice,cartItems);
                return Ok(new { success = true, discounted_price = discountedPrice });
@@ -44,6 +44,24 @@ public class CartController : ControllerBase
         else
         {
             return BadRequest(new { success = false, message = "Coupon is not valid" });
+        }
+    }
+    [HttpGet("check_coupon")]
+    public IActionResult getCouponByCode(string code)
+    {
+        try
+        {
+            if(!string.IsNullOrEmpty(code))
+            {
+                var coupon = _context.Coupons.FirstOrDefault(c => c.Code == code);
+                return Ok(new { success = true, data = coupon });
+            }
+            return BadRequest(new { success = true, mesgesa = "Coupon is not valid" });
+        }
+        catch (Exception)
+        {
+
+            throw;
         }
     }
     [HttpPost("create_coupon")]
@@ -84,7 +102,14 @@ public class CartController : ControllerBase
 
         // Check if the cart total price exceeds the coupon's total price threshold
         bool meetsTotalPriceCondition = cartTotalPrice >= coupon.TotalPriceThreshold;
+        //var priceItem = cartItems.Where(x => x.Price == coupon.TotalPriceThreshold).ToList();
+        //decimal totalPriceOfItemsWithSamePrice = itemsWithSamePrice.Sum(item => item.Price);
 
+        decimal totalCartPrice = cartItems.Sum(item => item.Price);
+
+        if(totalCartPrice != cartTotalPrice) return false;
+/*        bool comparePrice = totalCartPrice == cartTotalPrice;
+*/
         // Check if the number of items in the cart meets the minimum items condition
         bool meetsMinItemsCondition = cartItems.Count >= coupon.MinItems;
 
